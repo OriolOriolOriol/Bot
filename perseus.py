@@ -8,7 +8,7 @@ import emoji
 import requests 
 import json,webbrowser
 
-TOKEN = '790486292:AAE2_Dowg0hRAjypMxlup73MAXOHglv6v2s'
+TOKEN = '##########################################'
 updater = Updater(TOKEN, use_context=True)
 j = updater.job_queue
 uu=updater.job_queue
