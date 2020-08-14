@@ -7,8 +7,11 @@ import random
 import emoji
 import requests 
 import json,webbrowser
+import datetime
+from datetime import datetime, timedelta
+import smtplib, ssl
 
-TOKEN = '##########################################'
+TOKEN = '790486292:AAE2_Dowg0hRAjypMxlup73MAXOHglv6v2s'
 updater = Updater(TOKEN, use_context=True)
 j = updater.job_queue
 uu=updater.job_queue
@@ -24,11 +27,13 @@ def leggi_file():
     return myline
 
 
+
+
 def frasi():
-    import random
-    lines=open("//home//pi//Desktop/bot//frasi.txt").read().splitlines()
-    myline =random.choice(lines)
-    return myline
+	import random
+	lines=open("//home//pi//Desktop/bot//frasi.txt").read().splitlines()
+	myline =random.choice(lines)
+	return myline
 ##########################################################
 def check():
 	hostname="8.8.8.8"
@@ -249,15 +254,44 @@ def numeri(update,context):
 	 context.bot.sendMessage(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
 
 ####################################################
-def callback_minute1(context: telegram.ext.CallbackContext):
+def frasi23(update,context):
 	frasi1=frasi()
-	context.bot.send_message(chat_id='502522267',text=emoji.emojize(":double_exclamation_mark:"))
-	context.bot.send_message(chat_id='502522267',text=frasi1)
-	context.bot.send_message(chat_id='502522267',text=emoji.emojize(":double_exclamation_mark:"))
+	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":double_exclamation_mark:"))
+	context.bot.send_message(chat_id=update.effective_chat.id,text=frasi1)
+	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":double_exclamation_mark:"))
 	time.sleep(3)
+#####################################################
+def callback_minute1(context: telegram.ext.CallbackContext):
+	
+	def send():
+		fn = "claudio_note.txt"
+		f = open(fn)
+		output=[]
+		data_adesso=datetime.now()
+		data_adesso=str(data_adesso)
+		data_adesso=data_adesso[:10]
+		data_adesso=datetime.strptime(data_adesso, '%Y-%m-%d').strftime('%d/%m/%Y')
+		for myline in f:
+			data=myline[:10]
+			corpo=myline[10:]
+			dt_object1 = datetime.strptime(data, "%d/%m/%Y")
+			futuredate = dt_object1 - timedelta(days=2)
+			futuredate=str(futuredate)
+			futuredate=futuredate[:10]
+			data_finale=datetime.strptime(futuredate, '%Y-%m-%d').strftime('%d/%m/%Y')            
+			if data_adesso != data_finale:
+				pass
+				
+			elif data_adesso == data_finale:
+				riga="python3 //home//pi//Desktop//email1.py" + " " + corpo
+				os.system(riga)
+		
+		f.close
+	send()
 #####################################################
 def callback_minute(context: telegram.ext.CallbackContext):
 	hostname="8.8.8.8"
+	context.bot.send_message(chat_id='502522267',text='Ti aggiorno sul mio stato di salute..')
 	context.bot.send_message(chat_id='502522267',text='Fra qualche minuto riceverai il grafico della Uso e della Temperatura della CPU...')
 	context.bot.send_message(chat_id='502522267',text='Ti saranno inviati anche i grafici relativi all Upload e Download (Kb\s)...')
 	response=os.system(f'ping -c 3 {hostname}')
@@ -286,25 +320,73 @@ def help1(update,context):
 	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/password1 [password_Eleonora]")
 	time.sleep(1)
-	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/dati ")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota ")
+	time.sleep(1)
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/frasi Frasi motivazionali ")
 	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/help: Vi mostro i comandi che potete scrivere perche io vi possa rispondere")
 #######################################################################################
-def dati1(update,context):
-	print("Sono entrato nella sezione dati...\n")
-	context.bot.sendMessage(chat_id=update.effective_chat.id,text="Ti invio il file relativo all'attività sul tuo pc..")
-	time.sleep(1)
-	delete="rm" + " " + "-rf" + " " + "//home//pi//Desktop//bot//event_log//log"
-	os.system(delete)
-	os.chdir("//home//pi//Desktop//bot//event_log")
-	clono="git" + " " + "clone" + " " + "https://github.com/OriolOriolOriol/log.git"
-	os.system(clono)
-	print("Ho clonato")
-	context.bot.send_document(chat_id=update.effective_chat.id,document=open('//home//pi//Desktop//bot//event_log//log//log1234.txt','rb'))
-	time.sleep(1)
-	print("File inviato")
-	context.bot.send_message(chat_id=update.effective_chat.id,text="File inviato correttamente") 
-	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+def nota(update,context):
+	print("Sono entrato nella sezione delle note...\n")
+	note=context.args[0:]
+	note=" ".join(note)
+	if note != "" and note != "cancella":
+			
+		with open("claudio_note.txt", "a") as file:
+			data=file.write(note)
+			data=file.write("\n")
+			
+		time.sleep(1)
+		context.bot.send_message(chat_id=update.effective_chat.id,text="Scrittura avvenuta correttamente sul file") 
+		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+		
+	elif note == "":
+		def delete():
+			fn = "claudio_note.txt"
+			f = open(fn)
+			output=[]
+			data_adesso=datetime.now()
+			
+			for myline in f:
+				print(myline)
+				data=myline[:10]
+				dt_object1 = datetime.strptime(data, "%d/%m/%Y")             
+				if dt_object1 < data_adesso:
+					pass
+					
+				elif dt_object1 >= data_adesso:
+					output.append(myline)
+			
+			f.close
+			f = open("claudio_note.txt", 'w')
+			f.writelines(output)
+			f.close()
+			
+		delete()
+		
+		with open("claudio_note.txt", "r") as file:
+			line = file.readline()
+			cnt = 1
+			while line:
+				testo="Appuntamento {}----> {}".format(cnt, line.strip())
+				context.bot.send_message(chat_id=update.effective_chat.id,text=testo) 
+				print("Line {}: {}".format(cnt, line.strip()))
+				line = file.readline()
+				cnt += 1
+		
+
+		
+		time.sleep(1)
+		context.bot.send_message(chat_id=update.effective_chat.id,text="Lettura avvenuta correttamente del file") 
+		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+
+	
+	if note == "cancella":
+		file = open("claudio_note.txt", "w").close()
+		time.sleep(1)
+		context.bot.send_message(chat_id=update.effective_chat.id,text="Eliminazione avvenuta correttamente del contenuto nel file") 
+		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+
 
 
 #########################################################################################
@@ -314,14 +396,15 @@ def main():
 	dp = updater.dispatcher
 	dp.add_handler(CommandHandler('help', help1))
 	dp.add_handler(CommandHandler('numeri', numeri))
-	dp.add_handler(CommandHandler('dati',dati1))
+	dp.add_handler(CommandHandler('nota',nota))
+	dp.add_handler(CommandHandler('frasi',frasi23))
 	dp.add_handler(CommandHandler('password',password,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('password1',password1,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('meteo',meteo,pass_args=True,pass_chat_data=True))
-	
-	job_minute = uu.run_repeating(callback_minute1, interval=7200, first=0)
+
 	job_minute = j.run_repeating(callback_minute, interval=10800, first=0)
-	#evento sconosciuto
+	job_minute1 = j.run_repeating(callback_minute1, interval=18000, first=0)
+	
 	unknown_handler = MessageHandler(Filters.command, unknown)
 	dp.add_handler(unknown_handler)
 	updater.start_polling()
