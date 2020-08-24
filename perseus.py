@@ -10,6 +10,7 @@ import json,webbrowser
 import datetime
 from datetime import datetime, timedelta
 import smtplib, ssl
+from email.mime.text import MIMEText
 
 TOKEN = '790486292:AAE2_Dowg0hRAjypMxlup73MAXOHglv6v2s'
 updater = Updater(TOKEN, use_context=True)
@@ -261,6 +262,7 @@ def frasi23(update,context):
 	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":double_exclamation_mark:"))
 	time.sleep(3)
 #####################################################
+
 def callback_minute1(context: telegram.ext.CallbackContext):
 	
 	def send():
@@ -274,18 +276,49 @@ def callback_minute1(context: telegram.ext.CallbackContext):
 		for myline in f:
 			data=myline[:10]
 			corpo=myline[10:]
+			corpo=str(corpo)
+			print(corpo)
 			dt_object1 = datetime.strptime(data, "%d/%m/%Y")
-			futuredate = dt_object1 - timedelta(days=2)
-			futuredate=str(futuredate)
-			futuredate=futuredate[:10]
-			data_finale=datetime.strptime(futuredate, '%Y-%m-%d').strftime('%d/%m/%Y')            
+			futuredate = dt_object1 - timedelta(days=1)
+			futuredate = str(futuredate)
+			futuredate = futuredate[:10]
+			futuredate1 = dt_object1 - timedelta(days=0)
+			futuredate1 = str(futuredate1)
+			futuredate1 = futuredate1[:10]
+			data_finale=datetime.strptime(futuredate, '%Y-%m-%d').strftime('%d/%m/%Y')
+			data_finale1=datetime.strptime(futuredate1, '%Y-%m-%d').strftime('%d/%m/%Y')            
 			if data_adesso != data_finale:
 				pass
 				
-			elif data_adesso == data_finale:
-				riga="python3 //home//pi//Desktop//email1.py" + " " + corpo
-				os.system(riga)
-		
+			elif data_adesso == data_finale: #or data_adesso == data_finale1:
+				port = 587  # For starttls
+				smtp_server = "smtp.gmail.com"
+				sender_email = "orionperseus999@gmail.com"
+				receiver_email = "claudio.rimensi.1996.uni@gmail.com"
+				password = "orologio96"
+				msg = MIMEText(f'Appuntamento: {str(data)} {str(corpo)}')
+				msg['Subject'] = 'Appuntamento immimente!!!'
+				msg['From'] = sender_email
+				msg['To'] = receiver_email
+
+				context = ssl.create_default_context()
+				try:
+					with smtplib.SMTP(smtp_server, port) as server:
+						server.ehlo()  # Can be omitted
+						server.starttls(context=context)
+						server.ehlo()  # Can be omitted
+						server.login(sender_email, password)
+						server.sendmail(sender_email, receiver_email, msg.as_string())
+						# tell the script to report if your message was sent or which errors need to be fixed 
+						print('Sent')
+						
+				except (gaierror, ConnectionRefusedError):
+					print('Failed to connect to the server. Bad connection settings?')
+				except smtplib.SMTPServerDisconnected:
+					print('Failed to connect to the server. Wrong user/password?')
+				except smtplib.SMTPException as e:
+					print('SMTP error occurred: ' + str(e))
+			
 		f.close
 	send()
 #####################################################
@@ -309,6 +342,17 @@ def callback_minute(context: telegram.ext.CallbackContext):
 	context.bot.send_photo(chat_id='502522267',photo=open('//home//pi//Desktop//bot//grafico4.png', 'rb'))
 	
 ###########################################################
+def business(update,context):
+	comando1=f'adb shell screencap -p /sdcard/screencap.png'
+	comando2=f'adb pull /sdcard/screencap.png'
+	os.system(comando1)
+	os.system(comando2)
+	time.sleep(2)
+	context.bot.send_photo(chat_id=update.effective_chat.id,photo=open('/home/pi/Desktop/bot/screencap.png','rb'))
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="Ricordati che quando ti invio lo screenshot il contatore sara' 10 in meno")
+	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+
+###########################################################
 def help1(update,context):
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text='Ecco quello che posso fare per voi, per adesso...')
 	time.sleep(1)
@@ -323,6 +367,8 @@ def help1(update,context):
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota ")
 	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/frasi Frasi motivazionali ")
+	time.sleep(1)
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/business")
 	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/help: Vi mostro i comandi che potete scrivere perche io vi possa rispondere")
 #######################################################################################
@@ -401,6 +447,7 @@ def main():
 	dp.add_handler(CommandHandler('password',password,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('password1',password1,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('meteo',meteo,pass_args=True,pass_chat_data=True))
+	dp.add_handler(CommandHandler('business',business))
 
 	job_minute = j.run_repeating(callback_minute, interval=10800, first=0)
 	job_minute1 = j.run_repeating(callback_minute1, interval=18000, first=0)
