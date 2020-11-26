@@ -18,6 +18,7 @@ import numpy as np
 import cv2 
 import pyautogui
 import socket 
+from create_event import *
 
 TOKEN = '790486292:AAE2_Dowg0hRAjypMxlup73MAXOHglv6v2s'
 updater = Updater(TOKEN, use_context=True)
@@ -272,13 +273,18 @@ def frasi23(update,context):
 def callback_minute1(context: telegram.ext.CallbackContext):
 	
 	def client_program(message):
-		host = "192.168.1.49" # as both code is running on same pc
-		port = 5003  # socket server port number
-		client_socket = socket.socket()  # instantiate
-		client_socket.connect((host, port))  # connect to the server
-		print(message)
-		client_socket.send(message.encode())  # send message
-		client_socket.close()
+		try:
+			host = "192.168.1.62" # as both code is running on same pc
+			port = 5003  # socket server port number
+			client_socket = socket.socket()  # instantiate
+			client_socket.connect((host, port))  # connect to the server
+			print(message)
+			client_socket.send(message.encode())  # send message
+			client_socket.close()
+		except ConnectionRefusedError:
+			pass
+		except OSError:
+			pass
 		
 	def procedura_invio(data,corpo):
 		port = 587  # For starttls
@@ -309,7 +315,31 @@ def callback_minute1(context: telegram.ext.CallbackContext):
 		except smtplib.SMTPException as e:
 			print('SMTP error occurred: ' + str(e))
 			
+	def delete1():
+			fn = "claudio_note.txt"
+			f = open(fn)
+			output=[]
+			data_adesso=datetime.now()
+			
+			for myline in f:
+				print(myline)
+				data=myline[:10]
+				dt_object1 = datetime.strptime(data, "%d/%m/%Y")             
+				if dt_object1 < data_adesso:
+					pass
+					
+				elif dt_object1 >= data_adesso:
+					output.append(myline)
+			
+			f.close
+			f = open("claudio_note.txt", 'w')
+			f.writelines(output)
+			f.close()
+			
+		
+			
 	def send():
+		delete1()
 		fn = "claudio_note.txt"
 		f = open(fn)
 		output=[]
@@ -336,7 +366,6 @@ def callback_minute1(context: telegram.ext.CallbackContext):
 				
 			elif data_adesso == data_finale:
 				procedura_invio(data,corpo)
-				client_program("start Ti ho inviato un appuntamento/i per email. CONTROLLA!!!")
 				
 	
 			
@@ -401,15 +430,19 @@ def repo(update,context):
 	os.system(comando)
 	with open("repo.txt","r") as fp:
 		line = fp.readline()
+		line = line.replace("\"clone_url\":","")
+		nome = line.replace("https://github.com/OriolOriolOriol/","")
 		cnt = 1
 		while line:
 			print("Line {}: {}".format(cnt, line.strip()))
 			with open("repo2.txt","a") as file2:
-				file2.write("Line {}: {}".format(cnt, line.strip()))
+				file2.write("Line {} : {}  --> {}".format(cnt,nome,line.strip()))
 				file2.write("\n")
 				file2.write("\n")
 				
 			line = fp.readline()
+			line = line.replace("\"clone_url\":","")
+			nome = line.replace("https://github.com/OriolOriolOriol/","")
 			cnt += 1
 			
 	with open("repo2.txt","r") as file:
@@ -457,7 +490,7 @@ def help1(update,context):
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/numeri: Vi do random 6 numeri se volete giocare al superenalotto :) Che la fortuna possa essere sempre dalla vostra parte")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/password [password_Claudio]")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/password1 [password_Eleonora]")
-	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota [leggi : se vuoi leggere le note]")
+	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/nota [crea data ora contenuto / oppure scrivi solo /note]")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/frasi Frasi motivazionali ")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/bruteforce_instagram [nome_vittima_instagram]")
 	context.bot.sendMessage(chat_id=update.effective_chat.id,text="/agg_insta")
@@ -515,6 +548,69 @@ def scan(update,context):
 #######################################################################################
 def nota(update,context):
 	print("Sono entrato nella sezione delle note...\n")
+	try:
+		operazione=context.args[0]
+		data_iniziale=context.args[1]
+		data_vecchia = datetime.strptime(data_iniziale,'%d/%m/%Y')
+		data = data_vecchia.strftime('%Y-%m-%d')
+
+		##CREAZIONE FILE#################################################
+		if operazione == "crea":
+			ora=context.args[2]
+			contenuto=context.args[3:]
+			contenuto=" ".join(contenuto)
+			#Creazione su google calendar
+			creazione(data,ora,contenuto)
+			#Creazione classica
+			if ':' in ora:
+				ora=ora.replace(':',' ')
+			note= f'{ora} {contenuto}'
+			print(note)
+			giorni_della_settimana=["Lunedi","Martedi","Mercoledi","Giovedi","Venerdi","Sabato","Domenica"]
+			data= data_iniziale.split("/")
+			data_appuntamento=datetime(int(data[2]),int(data[1]),int(data[0]))
+			data_vera_propria=f'{data[0]}/{data[1]}/{data[2]}'
+			data_appuntamento=data_appuntamento.weekday()
+			giorno_del_mese= giorni_della_settimana[data_appuntamento]
+			with open("claudio_note.txt", "a") as file:
+				data=file.write(f"{data_vera_propria} --> {giorno_del_mese} : {note}")
+				data=file.write("\n")
+					
+			time.sleep(1)
+			context.bot.send_message(chat_id=update.effective_chat.id, text=f"Creazione evento avvenuta con successo {emoji.emojize(':grinning_face_with_smiling_eyes:')}") 
+        
+	except IndexError:
+		count = 0
+		lettura_eventi=read_event()
+		
+		if not lettura_eventi:
+			context.bot.send_message(chat_id=update.effective_chat.id, text="Non sono stati trovati appuntamenti!!")
+		for event in lettura_eventi:
+			count+=1
+			start = event['start'].get('dateTime', event['start'].get('date'))
+			data1=event['start'].get('dateTime')
+			data1=data1.replace("+01:00","Z")
+			print(data1)
+			giorni_della_settimana=["Lunedi","Martedi","Mercoledi","Giovedi","Venerdi","Sabato","Domenica"]
+			data_vecchia = datetime.strptime(data1,'%Y-%m-%dT%H:%M:%SZ')
+			data_confronto= datetime.strptime(str(data_vecchia), '%Y-%m-%d %H:%M:%S')
+			data = data_vecchia.strftime('%d/%m/%Y  %H:%M:%S')
+		
+			data_111= datetime.strptime(data, '%d/%m/%Y  %H:%M:%S') + timedelta(hours=0)
+			data_111 = data_111.strftime('%d/%m/%Y  %H:%M:%S')
+			data_per_giorni=data_vecchia.strftime('%d/%m/%Y')
+			data_uso= data_per_giorni.split("/")
+			data_appuntamento=datetime(int(data_uso[2]),int(data_uso[1]),int(data_uso[0]))
+			data_vera_propria=f'{data[0]}/{data[1]}/{data[2]}'
+			data_appuntamento=data_appuntamento.weekday()
+			giorno_del_mese= giorni_della_settimana[data_appuntamento]
+			data_adesso=datetime.now()
+			if data_confronto >= data_adesso:		
+				context.bot.send_message(chat_id=update.effective_chat.id, text=f"{emoji.emojize(':double_exclamation_mark:')} Appuntamento n. {count} : {giorno_del_mese} {data_111} --> {event['summary']}")
+		context.bot.send_message(chat_id=update.effective_chat.id, text=f"Lettura eventi avvenuta con successo {emoji.emojize(':grinning_face_with_smiling_eyes:')}") 
+
+	
+	'''
 	data=context.args[0]
 	
 	#cancello
@@ -589,7 +685,7 @@ def nota(update,context):
 			context.bot.send_message(chat_id=update.effective_chat.id,text="Scrittura avvenuta correttamente sul file") 
 			context.bot.send_message(chat_id=update.effective_chat.id,text=emoji.emojize(":grinning_face_with_smiling_eyes:"))	
 	
-	
+	'''
 #########################################################################################
 #FUNZIONE PRINCIPALE     
 def main():
@@ -609,7 +705,7 @@ def main():
 	dp.add_handler(CommandHandler('repo',repo))
 	dp.add_handler(CommandHandler('header',control_header,pass_args=True,pass_chat_data=True))
 	job_minute1 = j.run_repeating(callback_minute1, interval=18000, first=0)
-	job_minute2 = j.run_repeating(callback_minute2, interval=18000, first=0)
+	job_minute2 = j.run_repeating(callback_minute2, interval=10800, first=0)
 	job_minute = j.run_repeating(callback_minute, interval=10800, first=0)
 	
 	
